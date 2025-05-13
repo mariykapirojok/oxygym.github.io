@@ -1,0 +1,301 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OxyGYM - Фитнес-клуб</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+</head>
+<body>
+  <div class="overlay" id="overlay">
+    <div class="popup">
+      <h2>Запишитесь к нам!</h2>
+      <input type="text" id="name" placeholder="Ваше имя" required>
+      <input type="email" id="email" placeholder="Ваш email" required>
+      <input type="tel" id="phone" placeholder="Ваш телефон" required>
+      <button onclick="submitForm()">Отправить</button>
+      <button onclick="closePopup()">Закрыть</button>
+    </div>
+  </div>
+
+  <header class="header">
+    <nav class="header-navigation container">
+      <a href="#" class="logo">OXYGYM</a>
+      <ul>
+        <li><a href="#home">Главная</a></li>
+        <li><a href="#about">О нас</a></li>
+        <li><a href="#courses">Курсы</a></li>
+        <li><a href="#coaches">Тренеры</a></li>
+        <li><a href="#contact">Контакты</a></li>
+      </ul>
+      <div class="nav-icon">☰</div>
+    </nav>
+  </header>
+
+  <section class="section-hero" id="home">
+    <div class="hero-box container">
+      <h1 class="heading heading--1">Место для ваших фитнес целей</h1>
+      <p class="description">Мы предлагаем функциональные тренировки, плиометрические боксы, занятия аэробикой и многое другое.</p>
+      <a href="#" class="btn btn__primary" onclick="openPopup()">Присоединяйтесь к нам</a>
+    </div>
+  </section>
+
+  <section class="section-about" id="about">
+    <div class="about-box container" data-aos="fade-up">
+      <div class="about-box__content">
+        <h2 class="heading heading--2">О клубе OxyGYM</h2>
+        <p>Фитнес-клуб OxyGYM - Это комфортные тренажерные залы с европейским оборудованием последнего поколения, большой выбор групповых программ для взрослых и детей и квалифицированный тренерский состав. Мы делаем качественный фитнес доступным для всех, потому что хотим, чтобы каждый мог заниматься спортом и становиться здоровее с каждым днем.</p>
+        <a href="#" class="link-button">Читай больше</a>
+      </div>
+      <div class="about-box__image">
+        <!-- Можно заменить на локальное изображение: src="images/about-1.jpg" -->
+        <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x200?text=About+Image+1'" alt="Gym Equipment">
+        <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x200?text=About+Image+2'" alt="Gym Training">
+        <img src="https://images.unsplash.com/photo-1574680178050-55c6a6a96e0a?q=80&w=2069&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/400x200?text=About+Image+3'" alt="Gym Overview">
+      </div>
+    </div>
+  </section>
+
+  <section class="section-courses" id="courses">
+    <div class="courses-box container">
+      <div class="courses-heading">
+        <h2 class="heading heading--2">Наши Курсы</h2>
+        <p>Занятия направлены на улучшение физической формы, развитие выносливости и укрепление здоровья. Мы предлагаем следующие типы курсов:</p>
+      </div>
+      <div class="courses-content">
+        <div class="class-card">
+          <!-- Можно заменить на локальное изображение: src="images/body-building.jpg" -->
+          <img class="class-card__img" src="https://images.unsplash.com/photo-1605296866985-34b1741cf4d6?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=Body+Building'" alt="Body Building">
+          <div class="class-card__overlay">
+            <div class="text">Процесс преобразования тела за счёт увеличения мышечной мускулатуры и снижения количества подкожного жира с помощью силовых тренировок и контроля питания.</div>
+          </div>
+          <div class="class-card__title">Body Building</div>
+        </div>
+        <div class="class-card">
+          <!-- Можно заменить на локальное изображение: src="images/crossfit.jpg" -->
+          <img class="class-card__img" src="https://images.unsplash.com/photo-1519505907962-0d6c88b1f277?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=CrossFit'" alt="Cross Fit">
+          <div class="class-card__overlay">
+            <div class="text">Система круговых тренировок высокой интенсивности, в которой сочетаются упражнения из разных видов спорта: аэробики, гимнастики, лёгкой и тяжёлой атлетики, пауэрлифтинга.</div>
+          </div>
+          <div class="class-card__title">Cross Fit</div>
+        </div>
+        <div class="class-card">
+          <!-- Исправлен URL и добавлен запасной вариант -->
+          <!-- Можно заменить на локальное изображение: src="images/gymnastics.jpg" -->
+          <img class="class-card__img" src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=Гимнастика'" alt="Гимнастика">
+          <div class="class-card__overlay">
+            <div class="text">Специально разработанная система разнообразных физических упражнений, способствующих укреплению мышц всего организма.</div>
+          </div>
+          <div class="class-card__title">Гимнастика</div>
+        </div>
+        <div class="class-card">
+          <!-- Можно заменить на локальное изображение: src="images/fitness.jpg" -->
+          <img class="class-card__img" src="https://images.unsplash.com/photo-1588286840104-893e47460b91?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=Фитнес'" alt="Фитнес">
+          <div class="class-card__overlay">
+            <div class="text">Комплекс спортивных мероприятий, направленных на укрепление здоровья, поддержание физической формы и общего благополучия организма.</div>
+          </div>
+          <div class="class-card__title">Фитнес</div>
+        </div>
+        <div class="class-card">
+          <!-- Можно заменить на локальное изображение: src="images/trx.jpg" -->
+          <img class="class-card__img" src="https://images.unsplash.com/photo-1593079831268-337ef47d16aa?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=TRX'" alt="TRX">
+          <div class="class-card__overlay">
+            <div class="text">Упражнения на общее сопротивление тела, то есть работа с весом собственного тела.</div>
+          </div>
+          <div class="class-card__title">TRX</div>
+        </div>
+        <div class="class-card">
+          <!-- Можно заменить на локальное изображение: src="images/pilates.jpg" -->
+          <img class="class-card__img" src="https://images.unsplash.com/photo-1549060279-7e168fcee760?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=Пилатес'" alt="Пилатес">
+          <div class="class-card__overlay">
+            <div class="text">Комплекс гимнастических упражнений, направленный на подтяжку мышц тела, приведение организма в тонус.</div>
+          </div>
+          <div class="class-card__title">Пилатес</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-offer">
+    <div class="offer-box container">
+      <div class="offer">
+        <h2 class="heading heading--2">СПЕЦИАЛЬНОЕ ПРЕДЛОЖЕНИЕ!</h2>
+        <p>ЭТИМ ЛЕТОМ ПОЛУЧИТЕ ВСЕ ПРЕИМУЩЕСТВА В ТЕЧЕНИЕ ГОДА СО СКИДКОЙ 20%. Предложение действует в определенных акцией клубах.</p>
+        <a href="#" class="btn btn__primary" onclick="openPopup()">Стать участником</a>
+      </div>
+      <div class="offer-img"></div>
+    </div>
+  </section>
+
+  <section class="section-coaches" id="coaches">
+    <div class="coaches-box container">
+      <div class="coache-heading">
+        <h2 class="heading heading--2">Наши Фитнес тренеры</h2>
+      </div>
+      <div class="coache-content">
+        <div class="c-card">
+          <!-- Можно заменить на локальное изображение: src="images/coach-1.jpg" -->
+          <img class="c-card__img" src="https://images.unsplash.com/photo-1584464492346-78b86916b7a1?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=Coach+1'" alt="Данил Марченко">
+          <div class="overlay">
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/facebook.png" alt="Facebook"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png" alt="Instagram"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/twitter.png" alt="Twitter"></a>
+          </div>
+          <div class="c-card__content">
+            <div class="c-name">Данил Марченко</div>
+            <div class="c-title">Боди Билдинг</div>
+          </div>
+        </div>
+        <div class="c-card">
+          <!-- Можно заменить на локальное изображение: src="images/coach-2.jpg" -->
+          <img class="c-card__img" src="https://images.unsplash.com/photo-1594381898411-846e7d193883?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=Coach+2'" alt="Светлана Микитюк">
+          <div class="overlay">
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/facebook.png" alt="Facebook"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png" alt="Instagram"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/twitter.png" alt="Twitter"></a>
+          </div>
+          <div class="c-card__content">
+            <div class="c-name">Светлана Микитюк</div>
+            <div class="c-title">Кардио-Эксперт</div>
+          </div>
+        </div>
+        <div class="c-card">
+          <!-- Можно заменить на локальное изображение: src="images/coach-3.jpg" -->
+          <img class="c-card__img" src="https://images.unsplash.com/photo-1601422407692-ec4ee6f888b5?q=80&w=2070&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/300x400?text=Coach+3'" alt="Ярослав Михальцов">
+          <div class="overlay">
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/facebook.png" alt="Facebook"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png" alt="Instagram"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/twitter.png" alt="Twitter"></a>
+          </div>
+          <div class="c-card__content">
+            <div class="c-name">Ярослав Михальцов</div>
+            <div class="c-title">Фитнес тренер</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-review">
+    <div class="review-box container">
+      <div class="review-card">
+        <!-- Можно заменить на локальное изображение: src="images/review-1.jpg" -->
+        <img class="review-card__image" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=100&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/100?text=Review+1'" alt="Константин Клементьев">
+        <div class="review-card__content">
+          <div class="text">Хороший зал, купил абонемент на год, результат радует!</div>
+          <div class="name">Константин Клементьев</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <!-- Можно заменить на локальное изображение: src="images/review-2.jpg" -->
+        <img class="review-card__image" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop" onerror="this.src='https://via.placeholder.com/100?text=Review+2'" alt="Лада Басова">
+        <div class="review-card__content">
+          <div class="text">Приятные цены. Хорошие, вежливые сотрудники. Тренажеры новые. Удобное местоположение.</div>
+          <div class="name">Лада Басова</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-contact" id="contact">
+    <div class="contact-box container">
+      <div class="form-grp">
+        <h2 class="heading heading--2">Свяжитесь с нами</h2>
+        <input type="text" class="form form__input" placeholder="Ваше имя">
+        <input type="email" class="form form__input" placeholder="Ваш email">
+        <textarea class="form form__input" placeholder="Ваше сообщение"></textarea>
+        <button class="btn btn__primary form-flex">Отправить</button>
+      </div>
+      <div id="mapid"></div>
+    </div>
+  </section>
+
+  <footer class="section-footer">
+    <div class="footer-box container">
+      <div class="contact-details">
+        <a href="#" class="logo">OxyGYM</a>
+        <ul class="contact-data">
+          <li>г. Ростов-на-Дону, ул. Большая Садовая 190/45</li>
+          <li>+7(899) 500-32-40</li>
+          <li>info@oxygym.ru</li>
+          <li class="social">
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/facebook.png" alt="Facebook"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png" alt="Instagram"></a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/50/ffffff/twitter.png" alt="Twitter"></a>
+          </li>
+        </ul>
+      </div>
+      <div class="footer-nav">
+        <div class="nav-name">Быстрый переход</div>
+        <ul>
+          <li><a href="#home">На Главную</a></li>
+          <li><a href="#about">О нас</a></li>
+          <li><a href="#courses">Курсы</a></li>
+          <li><a href="#coaches">Тренеры</a></li>
+          <li><a href="#contact">Контакты</a></li>
+        </ul>
+      </div>
+      <div class="newsletter">
+        <div class="newsletter__title">Новостное письмо</div>
+        <div class="newsletter__text">Напишите нам!</div>
+        <div class="newsletter__input">
+          <input type="email" class="form form__input" placeholder="Ваш email">
+          <div class="send-icon">➤</div>
+        </div>
+      </div>
+      <div class="legel">
+        <div class="text">© 2025 OxyGYM. Все права защищены.</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>AOS.init();</script>
+  <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' });" style="position:fixed;bottom:20px;right:20px;padding:1rem 1.5rem;background:#ffc107;border:none;border-radius:5px;cursor:pointer;z-index:999;">↑</button>
+</body>
+</html>
